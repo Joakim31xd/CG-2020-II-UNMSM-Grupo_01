@@ -112,7 +112,7 @@ void display(){
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     /*--[FRAME IMGUI]-----------*/
-
+    bool show_another_window = false;
 
     static float tras_x = 0, tras_y=0;
     static float rota_x = 0, rota_y = 0;
@@ -138,6 +138,16 @@ void display(){
 		tras_y=tras_y+0.08;
 	}else if(Down){
 		tras_y=tras_y-0.08;
+	}
+
+	if(ImGui::Button("Change Object Color")){
+		if (show_another_window==false)
+		        {
+		            ImGui::Begin("Change Object Color", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+		            ImGui::Text("Hello from another window!");
+		            if (ImGui::Button("Close Me"))
+		                show_another_window = false;
+		        }
 	}
 
 	ImGui::Text("Color Red");
