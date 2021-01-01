@@ -37,7 +37,7 @@ using namespace std;
  * DICT_4X4_1000=3
  * DICT_5X5_50=4
  * DICT_5X5_100=5
- * DICT_5X5_250=6
+ * DICT_5X5_250=6 este es el que vamos a trabajar
  * DICT_5X5_1000=7
  * DICT_6X6_50=8
  * DICT_6X6_100=9
@@ -52,6 +52,8 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+	cv::Ptr<cv::aruco::DetectorParameters> detectorParams = cv::aruco::DetectorParameters::create();
+
 	int dict_number=6;
 	vector<int> ArrayIDdelSol;
 	cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dict_number));
@@ -65,6 +67,46 @@ int main(int argc, char **argv)
 	}
 	boardSol->draw( cv::Size(600,500), boardImage, 10, 1 );
 	cv::imwrite("MarcadordelSol.png", boardImage);
+
+
+	//ENCENDIDO DE LA CAMARA
+	int wait_time = 10;
+	int id_camera = 0; // 0 = camera default, 1 = second camera
+	// IP DE CAMARA DE CELULAR CON LA APP DROIDCAM
+	//const std::string videoStreamAddress="http://192.168.1.5:4747/video";
+	cv::VideoCapture in_video;
+	cv::Mat cameraMatrix, distCoeffs;
+	//readCameraParameters("c", cameraMatrix, distCoeffs);
+	// camera parameters are read from somewhere
+	//bool readOk = readCameraParameters(cameraMatrix, distCoeffs);
+	//cv::rea
+	in_video.open(id_camera); //CAMARA DE LA LAPTOP CONECTADA POR USB
+	//in_video.open(videoStreamAddress); // CAMARA DEL CELULAR CON DIRECCION IP
+	if (!in_video.isOpened()) {
+		std::cerr << "failed to open camera (id=" << id_camera<<")." << std::endl;
+		return 1;
+	}
+	while (in_video.grab()) {
+		cv::Mat image, image_copy;
+		in_video.retrieve(image);
+		image.copyTo(image_copy);
+		std::vector<int> ids;
+		std::vector<std::vector<cv::Point2f>> corners;
+		cv::aruco::detectMarkers(image, dictionary, corners, ids);
+
+		// If at least one marker detected
+		if (ids.size() > 0){
+			cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
+		}
+
+
+		imshow("Aruco Marker Detected", image_copy);
+		char key = (char)cv::waitKey(wait_time);
+		if (key == 27) // ascii 27 = ESC
+			break;
+	}
+
+	in_video.release();
 
 
     return 0;
