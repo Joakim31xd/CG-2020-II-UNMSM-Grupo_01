@@ -137,20 +137,24 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		while (in_video.grab()) {
-			cv::Mat image, image_copy, image_copyT;
+			cv::Mat image, image_copy, image_copyT,image_copyL;
 			in_video.retrieve(image);
 
 			image.copyTo(image_copy);
 			image.copyTo(image_copyT);
+			image.copyTo(image_copyL);
 
 			std::vector<int> ids;
 			std::vector<int> idsT;
+			std::vector<int> idsL;
 
 			std::vector<std::vector<cv::Point2f>> corners;
 			std::vector<std::vector<cv::Point2f>> cornersT;
+			std::vector<std::vector<cv::Point2f>> cornersL;
 
 			cv::aruco::detectMarkers(image, dictionary, corners, ids);
 			cv::aruco::detectMarkers(image, dictionary, cornersT, idsT); // Para la tierra
+			cv::aruco::detectMarkers(image, dictionary, cornersL, idsL); // Para la luna
 
 			// If at least one marker detected
 
@@ -164,19 +168,22 @@ int main(int argc, char **argv)
 
 			}*/
 
-			if (ids.size()>0 || idsT.size() > 0 ){ //Para el marcador de la Tierra
+			if (ids.size()>0 || idsT.size() > 0 || idsL.size()> 0 ){ //Para el marcador de la Tierra
 							cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
-							cv::aruco::drawDetectedMarkers(image_copyT, cornersT, idsT); // para la tierra
+							cv::aruco::drawDetectedMarkers(image_copyT, cornersT, idsT);//para la tierra
+							cv::aruco::drawDetectedMarkers(image_copyL, cornersL, idsL);// para la luna
 
 							cv::Vec3d rvec, tvec;
 
 							int val =cv::aruco::estimatePoseBoard(cornersT, idsT, boardTierra, cameraMatrix, distCoeffs, rvec, tvec, false);
 							int valid =cv::aruco::estimatePoseBoard(corners, ids, boardSol, cameraMatrix, distCoeffs, rvec, tvec, false);
+							int vali =cv::aruco::estimatePoseBoard(cornersL, idsL, boardLuna, cameraMatrix, distCoeffs, rvec, tvec, false);
 
 
-							if(val > 0 || valid>0)
+							if(val > 0 || valid>0 || vali>0)
 								cv::aruco::drawAxis(image_copy, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
 								cv::aruco::drawAxis(image_copyT, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
+								cv::aruco::drawAxis(image_copyL, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
 
 						}
 
