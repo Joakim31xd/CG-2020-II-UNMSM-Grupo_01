@@ -130,22 +130,51 @@ int main(int argc, char **argv)
 			return 1;
 		}
 		while (in_video.grab()) {
-			cv::Mat image, image_copy;
+			cv::Mat image, image_copy, image_copyT;
 			in_video.retrieve(image);
+
 			image.copyTo(image_copy);
+			image.copyTo(image_copyT);
+
 			std::vector<int> ids;
+			std::vector<int> idsT;
+
 			std::vector<std::vector<cv::Point2f>> corners;
+			std::vector<std::vector<cv::Point2f>> cornersT;
+
 			cv::aruco::detectMarkers(image, dictionary, corners, ids);
+			cv::aruco::detectMarkers(image, dictionary, cornersT, idsT); // Para la tierra
 
 			// If at least one marker detected
-			if (ids.size() > 0){
+
+			/*if (ids.size() > 0 ){
 				cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
 				cv::Vec3d rvec, tvec;
 				int valid =cv::aruco::estimatePoseBoard(corners, ids, boardSol, cameraMatrix, distCoeffs, rvec, tvec, false);
-				if(valid > 0)
+
+				if(valid > 0 )
 					cv::aruco::drawAxis(image_copy, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
-			}
-			imshow("Aruco Marker Detected", image_copy);
+
+			}*/
+
+			if (ids.size()>0 || idsT.size() > 0 ){ //Para el marcador de la Tierra
+							cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
+							cv::aruco::drawDetectedMarkers(image_copyT, cornersT, idsT); // para la tierra
+
+							cv::Vec3d rvec, tvec;
+
+							int val =cv::aruco::estimatePoseBoard(cornersT, idsT, boardTierra, cameraMatrix, distCoeffs, rvec, tvec, false);
+							int valid =cv::aruco::estimatePoseBoard(corners, ids, boardSol, cameraMatrix, distCoeffs, rvec, tvec, false);
+
+
+							if(val > 0 || valid>0)
+								cv::aruco::drawAxis(image_copy, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
+								cv::aruco::drawAxis(image_copyT, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
+
+						}
+
+
+			imshow("Detector Marcadores Aruko", image_copy);
 			char key = (char)cv::waitKey(wait_time);
 			if (key == 27) // ascii 27 = ESC
 				break;
