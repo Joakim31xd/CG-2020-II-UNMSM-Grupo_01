@@ -58,14 +58,14 @@ int main(int argc, char **argv)
 	int dict_number=6;
 	vector<int> ArrayIDdelSol; //marcadores hechos para el sol
 	vector<int> ArrayIDdeTierra; //marcadores para elplaneta Tierra
-
+	vector<int> ArrayIDdeLuna;//macadores para la luna
 
 	cv::Ptr<cv::aruco::Dictionary> dictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME(dict_number));
 	cv::Ptr<cv::aruco::GridBoard> boardSol = cv::aruco::GridBoard::create(5, 5, 0.04, 0.01, dictionary);
 
 
 	cv::Ptr<cv::aruco::GridBoard> boardTierra = cv::aruco::GridBoard::create(5, 5, 0.04, 0.01, dictionary);
-
+	cv::Ptr<cv::aruco::GridBoard> boardLuna = cv::aruco::GridBoard::create(5, 5, 0.04, 0.01, dictionary);
 
 
 	cv::Mat boardImage;
@@ -85,17 +85,24 @@ int main(int argc, char **argv)
 		for(int l=0;l<25;l++){
 			boardTierra->ids[l]=ArrayIDdeTierra.at(l); //para cada posicion del board asigno los valores del vectorTierra
 		}
-
+    //Para la Luna
+	cv::Mat boardImageL;
+		for(int k=0;k<25;k++){
+			ArrayIDdeLuna.push_back(k+50); //Asigno los ids para un arreglo de la Luna
+			}
+		for(int l=0;l<25;l++){
+			boardLuna->ids[l]=ArrayIDdeLuna.at(l); //para cada posicion del board asigno los valores del vector Luna
+			}
 
 	//Dibujar MArcadores
 	boardSol->draw( cv::Size(600,500), boardImage, 10, 1 );
 	boardTierra->draw( cv::Size(600,500), boardImageT, 10, 1 ); //Para la tierra
-
+	boardLuna->draw( cv::Size(600,500), boardImageL, 10, 1 ); //Para la luna
 
 	//Impresion de imagenes
 	cv::imwrite("MarcadordelSol.png", boardImage);
 	cv::imwrite("MarcadordeTierra.png", boardImageT); //Para la tierra
-
+	cv::imwrite("MarcadordeLuna.png", boardImageL); //Para la Luna
 
 	//ENCENDIDO DE LA CAMARA
 		int wait_time = 10;
