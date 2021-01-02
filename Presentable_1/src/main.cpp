@@ -68,18 +68,27 @@ int main(int argc, char **argv)
 	boardSol->draw( cv::Size(600,500), boardImage, 10, 1 );
 	cv::imwrite("MarcadordelSol.png", boardImage);
 
-
 	//ENCENDIDO DE LA CAMARA
 	int wait_time = 10;
 	int id_camera = 0; // 0 = camera default, 1 = second camera
 	// IP DE CAMARA DE CELULAR CON LA APP DROIDCAM
-	//const std::string videoStreamAddress="http://192.168.1.5:4747/video";
+	const std::string videoStreamAddress="http://192.168.1.5:4747/video";
 	cv::VideoCapture in_video;
-	cv::Mat cameraMatrix, distCoeffs;
-	//readCameraParameters("c", cameraMatrix, distCoeffs);
-	// camera parameters are read from somewhere
-	//bool readOk = readCameraParameters(cameraMatrix, distCoeffs);
-	//cv::rea
+	double fx, fy, cx, cy, k1, k2, k3, p1, p2;
+	fx = 955.8925;
+	fy = 955.4439;
+	cx = 296.9006;
+	cy = 215.9074;
+	k1 = -0.1523;
+	k2 = 0.7722;
+	k3 = 0;
+	p1 = 0;
+	p2 = 0;
+	cv::Mat cameraMatrix = (cv::Mat_<float>(3, 3) <<
+		fx, 0.0, cx,
+		0.0, fy, cy,
+		0.0, 0.0, 1.0);
+	cv::Mat distCoeffs = (cv::Mat_<float>(5, 1) << k1, k2, p1, p2, k3);
 	in_video.open(id_camera); //CAMARA DE LA LAPTOP CONECTADA POR USB
 	//in_video.open(videoStreamAddress); // CAMARA DEL CELULAR CON DIRECCION IP
 	if (!in_video.isOpened()) {
@@ -97,9 +106,11 @@ int main(int argc, char **argv)
 		// If at least one marker detected
 		if (ids.size() > 0){
 			cv::aruco::drawDetectedMarkers(image_copy, corners, ids);
+			cv::Vec3d rvec, tvec;
+			int valid =cv::aruco::estimatePoseBoard(corners, ids, boardSol, cameraMatrix, distCoeffs, rvec, tvec, false);
+			if(valid > 0)
+				cv::aruco::drawAxis(image_copy, cameraMatrix, distCoeffs, rvec, tvec, 0.1);
 		}
-
-
 		imshow("Aruco Marker Detected", image_copy);
 		char key = (char)cv::waitKey(wait_time);
 		if (key == 27) // ascii 27 = ESC
