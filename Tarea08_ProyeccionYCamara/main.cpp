@@ -36,6 +36,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 #include <vector>
 #ifndef MPI
 #define M_PI 3.14159265358979323846
@@ -66,6 +67,39 @@ GLint numeroVertices;
 
 GLint WindowWidth = 600;
 GLint WindowHeight = 600;
+float tiempito=0.0f;
+const float DEGTORAD = 3.1415769/180.0f;
+
+//initial velocity
+float iVel = 7.0f;
+
+//initial position
+float posX = 0.0f;
+float posY = 0.0f;
+
+//angle being fired
+float theta = 75.0f;
+
+//initial x and y velocity calculated
+float ivelX = iVel*cos(theta*DEGTORAD);
+float ivelY = iVel*sin(theta*DEGTORAD);
+
+//new velocity
+float velX = 0.0f;
+float velY = 0.0f;
+
+//changing time
+float Time = 0.0f;
+
+int disparos=0;
+int puntaje=0;
+
+
+float UltimaX=0.0f,UltimaY=0.0f,RestaX=0.0f,RestaY=0.0f;
+bool Activador=false;
+float AnguloBalaLOCAL=0.0f,TiempoVueloLOCAL=0.0f,VelocidadVueloLOCAL=0.0f,VelocidadAnimacionLOCAL=0.0f;
+float AnguloBala,TiempoVuelo=0.0f,VelocidadVuelo,VelocidadAnimacion;
+
 float xpos; float ypos;
 bool firstMouse = true;
 float yawXD   = -90.0f;	// yaw is initialized to -90.0 degrees since a yaw of 0.0 results in a direction vector pointing to the right so we initially rotate a bit to the left.
@@ -91,9 +125,8 @@ int dimension;
 const float toRadians = 3.14159265f / 180.0f;
 float curAngle = 0.0f;
 
-float AnguloSegundero = 0.0f;
-float AnguloMinutero = 0.0f;
-float paso = 0.0f;
+
+
 float rotaPendulo = 0.0f;
 bool direction = true;
 float triOffset = 0.0f;
@@ -228,8 +261,6 @@ void GenerarCirculo(GLfloat Radio, GLfloat x, GLfloat y, GLfloat z,GLfloat R, GL
 		GLint dimVertices = (numeroVertices) * 3;
 		float m_Vertices[dimVertices];
 		float m_Colores[dimVertices];
-
-
 		for (int i = 0; i < numeroVertices; i++) {
 			m_Vertices[i * 3] = verticesX[i];
 			m_Vertices[i * 3 + 1] = verticesY[i];
@@ -255,40 +286,37 @@ void GenerarSemiCirculo(GLfloat Radio, GLfloat x, GLfloat y, GLfloat z,GLuint A,
 
 		int aux=(numeroLados)*A/360;
 		switch(plano){
-					case 0://XY
-						verticesX[0] = (radius * cos(A * twicePi / 360));
-						verticesY[0] = (radius * sin(A * twicePi/ 360));
-						verticesZ[0] = z;
-						for (int i=aux-1; i <aux+numeroVertices; i++) {
-							verticesX[i-(aux)] = x + (radius * cos(i * twicePi / numeroLados));
-							verticesY[i-(aux)] = y + (radius * sin(i * twicePi / numeroLados));
-							verticesZ[i-(aux)] = z;
-						}
-						break;
-					case 1://XZ
-						verticesX[0] = (radius * sin(A * twicePi/ 360));
-						verticesY[0] = y;
-						verticesZ[0] = (radius * cos(A * twicePi / 360));
-						for (int i=aux-1; i <aux+numeroVertices; i++) {
-							verticesX[i-(aux)] = x + (radius * sin(i * twicePi / numeroLados));
-							verticesY[i-(aux)] = y ;
-							verticesZ[i-(aux)] = z + (radius * cos(i * twicePi / numeroLados));
-						}
-						break;
-					case 2://YZ
-						verticesX[0] = x;
-						verticesY[0] = (radius * cos(A * twicePi / 360));
-						verticesZ[0] = (radius * sin(A * twicePi/ 360));
-						for (int i=aux-1; i <aux+numeroVertices; i++) {
-							verticesX[i-(aux)] = x ;
-							verticesY[i-(aux)] = y + (radius * cos(i * twicePi / numeroLados));
-							verticesZ[i-(aux)] = z + (radius * sin(i * twicePi / numeroLados));
-						}
-						break;
+			case 0://XY
+				verticesX[0] = (radius * cos(A * twicePi / 360));
+				verticesY[0] = (radius * sin(A * twicePi/ 360));
+				verticesZ[0] = z;
+				for (int i=aux-1; i <aux+numeroVertices; i++) {
+					verticesX[i-(aux)] = x + (radius * cos(i * twicePi / numeroLados));
+					verticesY[i-(aux)] = y + (radius * sin(i * twicePi / numeroLados));
+					verticesZ[i-(aux)] = z;
 				}
-
-
-
+				break;
+			case 1://XZ
+				verticesX[0] = (radius * sin(A * twicePi/ 360));
+				verticesY[0] = y;
+				verticesZ[0] = (radius * cos(A * twicePi / 360));
+				for (int i=aux-1; i <aux+numeroVertices; i++) {
+					verticesX[i-(aux)] = x + (radius * sin(i * twicePi / numeroLados));
+					verticesY[i-(aux)] = y ;
+					verticesZ[i-(aux)] = z + (radius * cos(i * twicePi / numeroLados));
+				}
+				break;
+			case 2://YZ
+				verticesX[0] = x;
+				verticesY[0] = (radius * cos(A * twicePi / 360));
+				verticesZ[0] = (radius * sin(A * twicePi/ 360));
+				for (int i=aux-1; i <aux+numeroVertices; i++) {
+					verticesX[i-(aux)] = x ;
+					verticesY[i-(aux)] = y + (radius * cos(i * twicePi / numeroLados));
+					verticesZ[i-(aux)] = z + (radius * sin(i * twicePi / numeroLados));
+				}
+				break;
+		}
 		GLint dimVertices = ((numeroVertices)) * 3;
 		GLfloat m_Vertices[dimVertices];
 		GLfloat m_Colores[dimVertices];
@@ -349,20 +377,20 @@ void GenerarRectangulo(GLfloat Altura, GLfloat Base, GLfloat x, GLfloat y, GLflo
 //--------------------------------------------------------------------------------
 void GenerarTriangulo(GLfloat Altura, GLfloat Base, GLfloat x, GLfloat y, GLfloat z,GLfloat R, GLfloat G , GLfloat B,int plano){
 	GLfloat p1,p2,p3,p7,p8,p9;
-		switch(plano){
-			case 0:
-				p1=x + Base/2 ;p2=y		  ;p3=z ;
-				p7=x  		;p8=y - Altura;p9=z ;
-				break;
-			case 1:
-				p1=x + Base/2 ;p2=y		  ;p3=z ;
-				p7=x  		;p8=y 		  ;p9=z + Altura ;
-				break;
-			case 2:
-				p1=x 		;p2=y		  ;p3=z + Altura;
-				p7=x  		;p8=y - Altura;p9=z ;
-				break;
-		}
+	switch(plano){
+		case 0:
+			p1=x + Base/2 ;p2=y		  ;p3=z ;
+			p7=x  		;p8=y - Altura;p9=z ;
+			break;
+		case 1:
+			p1=x + Base/2 ;p2=y		  ;p3=z ;
+			p7=x  		;p8=y 		  ;p9=z + Altura ;
+			break;
+		case 2:
+			p1=x 		;p2=y		  ;p3=z + Altura;
+			p7=x  		;p8=y - Altura;p9=z ;
+			break;
+	}
 	GLfloat m_Vertices[9]={
 		x, y, z,
 		p1,p2,p3,
@@ -401,14 +429,45 @@ void Animacion(glm::mat4 &model, int tipoAnimacion){
 	switch(tipoAnimacion){
 		case 0: break;
 		case 1:
-			{ glm::mat4 trasl = glm::translate(identidad, glm::vec3(10.0f,-10.0f, 0.0f));
-			glm::mat4 traslinv = glm::translate(identidad, glm::vec3(-10.0f,10.0f, 0.0f));
-			  glm::mat4 rotacion = glm::rotate(identidad, 90 * toRadians, glm::vec3(0.0f, 0.0f, 0.0f));
-				model =  traslinv * rotacion * trasl *model;
+			{ glm::mat4 trasl = glm::translate(identidad, glm::vec3(glfwGetTime()*10,glfwGetTime()*10, 0.0f));
+			//glm::mat4 traslinv = glm::translate(identidad, glm::vec3(-10.0f,10.0f, 0.0f));
+			 //glm::mat4 rotacion = glm::rotate(identidad, 90 * toRadians, glm::vec3(0.0f, 0.0f, 0.0f));
+				//model =  traslinv * rotacion * trasl *model;
+			model =  trasl *model;
 
 			}
 			break;
 		case 2:
+			{
+			if(Activador==false){
+				  glm::mat4 trasl = identidad;
+				  model =  trasl *model;
+			  }else{
+				  Time = clock()*0.001f * VelocidadVuelo;
+				glm::mat4 traslado;
+				RestaX=posX;
+				RestaY=posY;
+				posX += velX;
+				posY += velY;
+				velY = ivelY - 9.8*Time;
+				velX = ivelX;
+				UltimaX=posX;
+				UltimaY=posY;
+				printf("%f",tiempito);
+
+				if(tiempito<50.0f){
+					traslado = glm::translate(identidad, glm::vec3(0.0f,tiempito,0.0f));
+					tiempito=tiempito+VelocidadVuelo/1000;
+					if(tiempito>=30.0f){
+						puntaje++;
+					}
+				}else {
+
+					traslado = identidad;
+				}
+				model = traslado * model;
+			  }
+			}
 			break;
 		case 3:
 			break;
@@ -486,37 +545,81 @@ void SumarPosicionPuntero(){
 	CBO_Puntero++;
 }
 //El Cubo se puede personalizar segun el color de un lado, EL ORIGEN NO SE CAMBIA
-void GenerarCubo(glm::vec3 origen,int tamanio,glm::vec3 color){
+void GenerarCubo(glm::vec3 origen,int tamanio,glm::vec3 color, int animacion){
 	//Lado 1
-	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z,0.0f, color.y , color.z,0);//XY
-	draw(5,0);
+	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z,color.x, color.y , color.z,0);//XY
+	draw(5,animacion);
 	//Lado 2
-	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z,0.8f, color.y , color.z,1);//XZ
-	draw(5,0);
-	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z,0.9f, color.y , color.z,2);//YZ
-	draw(5,0);
+	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z,color.x, color.y , color.z,1);//XZ
+	draw(5,animacion);
 	//Lado 3
-	GenerarRectangulo(tamanio,tamanio,origen.x+tamanio, origen.y, origen.z,color.x, color.y , color.z,2);//YZ
-	draw(5,0);
+	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z,color.x, color.y , color.z,2);//YZ
+	draw(5,animacion);
 	//Lado 4
+	GenerarRectangulo(tamanio,tamanio,origen.x+tamanio, origen.y, origen.z,color.x, color.y , color.z,2);//YZ
+	draw(5,animacion);
+	//Lado 5
 	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y-tamanio, origen.z,color.x, color.y , color.z,1);//YZ
-	draw(5,0);
-	//lado 5
+	draw(5,animacion);
+	//lado 6
 	GenerarRectangulo(tamanio,tamanio,origen.x, origen.y, origen.z+tamanio,color.x, color.y , color.z,0);//XY
-	draw(5,0);
+	draw(5,animacion);
 
 }
+void SumaderoPuntaje(glm::vec3 origen,glm::vec3 pto,float Altura,float Base,float puntaje){
+	GLfloat p1,p2,p3,p4,p5,p6,p7,p8,p9;
+
+	GLfloat m_Vertices[18]={
+			origen.x, origen.y, origen.z,//p0
+			origen.x + Base ,origen.y,origen.z ,//p1
+			origen.x ,origen.y ,origen.z + Altura ,//p2
+			origen.x + Base ,origen.y		  ,origen.z + Altura,//p3
+			origen.x + Base ,origen.y		  ,origen.z ,//p1
+		origen.x  		,origen.y 		  ,origen.z + Altura //p2
+	};/*
+	float dX = pto.x-p2.x;
+	float dY = pto.y-p2.y;
+	float dX21 = p2.x-p1.x;
+	float dY12 = p1.y-p2.y;
+	float D = dY12*(p0.x-p2.x) + dX21*(p0.y-p2.y);
+	float s = dY12*dX + dX21*dY;
+	float t = (p2.y-p0.y)*dX + (p0.x-p2.x)*dY;
+	if (D<0) return s<=0 && t<=0 && s+t>=D;
+	    return s>=0 && t>=0 && s+t<=D;*/
+}
+
 
 //--------------------------------------------------------------------------------
 void DibujoICuadrante(){
-	m_VBO= new GLuint[20];
-	m_CBO= new GLuint[20];
+	m_VBO= new GLuint[20]; //////////////////////////////// agregar figuras 2D
+	m_CBO= new GLuint[20]; /////////////////////////////////
 	glBindVertexArray(m_VAO[0]);
 	glGenBuffers(20, m_VBO);
 	glGenBuffers(20, m_CBO);
+	GenerarRectangulo(1.0f,100.0f,0.0f,0.0f,-70.0f,1.0f, 0.0f , 0.0f,0);
+	draw(5,0);
+	GenerarRectangulo(100.0f,1.0f,0.0f,0.0f,-70.0f,0.0f, 0.0f , 1.0f,0);
+	draw(5,0);
+	GenerarRectangulo(5.0f,5.0f,0.0f,0.0f,-70.0f+100.0f,0.0f, 1.0f , 0.0f,0);
+	draw(5,0);
 
-	GenerarCubo(glm::vec3(10.0f,-10.0f,-50.0f),5,glm::vec3(1.0f,0.234f,0.486f));
+	//Modelo del tanque  0 porque es estatico
 
+	//modelo de la base
+	GenerarCubo(glm::vec3(10.0f,-10.0f,-50.0f),5,glm::vec3(0.29f,0.435f,0.133f),0);
+	//modelo de la parte de arriba
+	GenerarCubo(glm::vec3(11.0f,-10.7f,-45.0f),3,glm::vec3(0.0f,0.561f,0.224f),0);
+	//modelo del cañon
+	GenerarCubo(glm::vec3(11.5f,-6.0f,-49.7f),2,glm::vec3(1.0f,0.8f,0.3f),0);
+	GenerarCubo(glm::vec3(11.5f,-8.0f,-49.7f),2,glm::vec3(1.0f,0.8f,0.3f),0);
+	//mira del cañon
+	GenerarCubo(glm::vec3(12.0f,-6.0f,-47.7f),1,glm::vec3(0.29f,0.435f,0.133f),0);
+
+	GenerarCubo(glm::vec3(12.0f,-6.0f,-46.7f),1,glm::vec3(0.0f,0.0f,0.0f),2);
+
+	//RECTANGULOS DEL TABLERO
+	GenerarRectangulo(10.0f,16.0f,3.0f,20.0f,-50.0f,1.0f,0.0f,0.0f,1);
+	draw(5,0);
 
 	/*--[FRAME IMGUI]-----------*/
 	ImGui_ImplOpenGL3_NewFrame();
@@ -566,6 +669,37 @@ void DibujoICuadrante(){
 	 mouse_callback();
 	ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate); // Muestra los FPS de la aplicación
 	ImGui::End(); // Aqui termina la ventana ultima en iniciar
+	ImGui::Begin("PUNTAJES DE LAS BALAS");
+	ImGui::Text("Puntaje Acumulado: %d",puntaje);
+	ImGui::Text("Disparos Realizados: %d",disparos);
+
+
+	ImGui::End();
+	ImGui::Begin("Panel de Control ");
+	ImGui::SliderFloat("Angulo THETA  XY" ,&AnguloBalaLOCAL, 0, 100);
+
+	ImGui::Text(" ");
+	ImGui::SliderFloat("Velocidad disparo", &VelocidadVueloLOCAL, 0, 100);
+	ImGui::SliderFloat("Velocidad Animacion", &VelocidadAnimacionLOCAL, 1, 5);
+	//ImGui::SliderFloat("M. Camara Z", &cameraZ, -360, 360);
+	ImGui::PushStyleColor(ImGuiCol_Button, {209.0f/255.0f, 116.0f/255.0f, 11.0f/255.0f, 1} );
+	bool Lanzamiento =ImGui::Button("LANZAR BALA");
+	ImGui::PopStyleColor(1);
+	if(Lanzamiento){
+		AnguloBala = AnguloBalaLOCAL;
+		//TiempoVuelo = TiempoVueloLOCAL;
+		VelocidadVuelo =VelocidadVueloLOCAL;
+		Activador=true;
+		disparos++;
+	}
+	bool ResetLanza =ImGui::Button("Resetea Bala");
+	if(ResetLanza){
+		tiempito=0.0f;
+		Activador=false;
+
+	}
+	//float AnguloBala,TiempoVuelo,VelocidadVuelo;
+	ImGui::End();
 	/*--[CODIGO IMGUI]-----------*/
 
 	/*--[RENDER IMGUI]-----------*/
@@ -678,4 +812,3 @@ int main( void )
 
     return 0;
 }
-
