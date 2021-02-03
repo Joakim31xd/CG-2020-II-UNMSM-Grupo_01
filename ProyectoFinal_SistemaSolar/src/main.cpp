@@ -222,6 +222,7 @@ int main()
 	// =================================================================================
 	// Texture Stuff
 	GLuint texture1, texture2;
+	GLuint texture3; //para la luna
 
 	glGenTextures(1, &texture1);
 	glBindTexture(GL_TEXTURE_2D, texture1);
@@ -239,6 +240,26 @@ int main()
 	glGenerateMipmap(GL_TEXTURE_2D);
 	SOIL_free_image_data(image1);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+
+	////////////////////////////////////////////////////TEXTURA LUNA
+
+	glGenTextures(1, &texture3);
+	glBindTexture(GL_TEXTURE_2D, texture3);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	unsigned char* image3 = SOIL_load_image("resources/moon.jpg", &width, &height, 0, SOIL_LOAD_RGB);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image3);
+	glGenerateMipmap(GL_TEXTURE_2D);
+	SOIL_free_image_data(image3);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
+/////////////////////////////////////////////////////////////////////////////////
 
 	glGenTextures(1, &texture2);
 	glBindTexture(GL_TEXTURE_2D, texture2);
@@ -265,8 +286,6 @@ int main()
 	modelview = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.1f));
 
 	modelview = glm::translate(model, glm::vec3(0.0f, 0.0f, 10.0f));
-
-
 
 	// defining the projection matrix
 	float near = 0.2f;
