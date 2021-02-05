@@ -216,7 +216,7 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	unsigned char* image2 = SOIL_load_image("resources/batman.jpg", &width, &height, 0, SOIL_LOAD_RGB);
+	unsigned char* image2 = SOIL_load_image("resources/earth.jpg", &width, &height, 0, SOIL_LOAD_RGB);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image2);
 	glGenerateMipmap(GL_TEXTURE_2D);
 	SOIL_free_image_data(image2);
@@ -395,10 +395,29 @@ int main()
 		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
 		mvPila.pop();
 
-		//Se elimina mvPila segun las veces que se ha creado objetos
-		//mvPila.pop();
-		//mvPila.pop();
+	// MODELO DE LA TIERRA///////////////////////////////////////////////////////////////////
+
+		mvPila.push(mvPila.top());  // mvMat of EARTH
+		mvPila.top() *= glm::translate(glm::mat4(1.0f),glm::vec3(sin((float) glfwGetTime()) * 4.0, 0.0f,cos((float) glfwGetTime()) * 4.0));  // planet position
+		mvPila.push(mvPila.top());  // duplicating
+		mvPila.top() *= glm::rotate(glm::mat4(1.0f), (float) glfwGetTime(),glm::vec3(0.0, 1.0, 0.0));  // planet rotation
+
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, texture2);
+		glUniform1i(glGetUniformLocation(renderingProgram, "Textura"), 1);
+		glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvPila.top()));
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		// Postion Attribute
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (GLvoid*)0);
+		glEnableVertexAttribArray(0);
+		// Texture Attribute
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float) , (GLvoid*)(3* sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glBindVertexArray(VAO);
+		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
 		mvPila.pop();
+
+
 
 		//MODELO EJEMPLO LUNA//////////////////////////////////////////////////////////////
 		mvPila.push(mvPila.top());  // mvMat de luna
@@ -429,8 +448,8 @@ int main()
 
 
 		//Se elimina mvPila segun las veces que se ha creado objetos
-		//mvPila.pop();
-		//mvPila.pop();
+		mvPila.pop();
+		mvPila.pop();
 		mvPila.pop();
 
 		// draw bg ---------------------------------------------------------------------------------------------
