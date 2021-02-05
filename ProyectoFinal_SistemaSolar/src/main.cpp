@@ -400,6 +400,38 @@ int main()
 		//mvPila.pop();
 		mvPila.pop();
 
+		//MODELO EJEMPLO LUNA//////////////////////////////////////////////////////////////
+		mvPila.push(mvPila.top());  // mvMat de luna
+		mvPila.top() *= glm::translate(glm::mat4(1.0f),
+		glm::vec3(0.0f, sin((float) glfwGetTime()) * 2.0, cos((float) glfwGetTime()) * 2.0));  // POSICION DE LA LUNA
+		mvPila.push(mvPila.top());  // duplicating
+		mvPila.top() *= glm::rotate(glm::mat4(1.0f), (float) glfwGetTime(),glm::vec3(0.0, 0.0, 1.0));  // ROTACION DE LA LUNA
+		mvPila.top() *= glm::scale(glm::mat4(1.0f), glm::vec3(0.25f, 0.25f, 0.25f));  //HACE LA LUNA MAS PEQUENA
+
+
+		glActiveTexture(GL_TEXTURE2);
+		glBindTexture(GL_TEXTURE_2D, texture3); //aplica la textura almacenada donde estaba la luna
+		glUniform1i(glGetUniformLocation(renderingProgram, "Textura"), 2);
+
+		glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvPila.top()));
+		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+		//ATRIBUTOS DE POSICION
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (GLvoid*)0); /////////////// LOS 2 ULTIMOS PARAMETROS
+		glEnableVertexAttribArray(0); ////////////// QUE NUM VA
+		//ATRIBUTOS DE TEXTURA
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float) , (GLvoid*)(3* sizeof(float)));
+		glEnableVertexAttribArray(1);
+		glBindVertexArray(VAO);
+		//    glEnable(GL_DEPTH_TEST);
+		//    glDepthFunc(GL_LEQUAL);
+		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
+
+
+
+		//Se elimina mvPila segun las veces que se ha creado objetos
+		//mvPila.pop();
+		//mvPila.pop();
+		mvPila.pop();
 
 		// draw bg ---------------------------------------------------------------------------------------------
 		glUseProgram(bgProgram);
