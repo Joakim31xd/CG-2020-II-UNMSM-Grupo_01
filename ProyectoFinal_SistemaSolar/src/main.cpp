@@ -27,35 +27,9 @@ using namespace cv;
 const float arucoSquareDimension = 0.05f;
 Sphere mySphere = Sphere(48);
 GLuint VBO, VAO;
-GLuint mvLoc, projLoc;
+GLuint mvLoc, projLoc,modelLoc;
 stack<glm::mat4> mvPila;
-
-
-void drawSquare(cv::InputOutputArray image, cv::InputArray cameraMatrix,cv::InputArray distCoeffs, cv::InputArray rvec, cv::InputArray tvec,float l0)
-{
-	float l = l0 * 1.05;  // new square is 5% larger than the aruco marker
-	float half_l = l / 2.0;
-
-	// Define the square on the camera frame (this is 3D since the camera
-	// frame is 3D).
-	std::vector<cv::Point3f> squarePoints;
-	squarePoints.push_back(cv::Point3f(half_l, half_l, 0));
-	squarePoints.push_back(cv::Point3f(half_l, -half_l, 0));
-	squarePoints.push_back(cv::Point3f(-half_l, -half_l, 0));
-	squarePoints.push_back(cv::Point3f(-half_l, half_l, 0));
-
-	// Project the square to the image.
-	std::vector<cv::Point2f> imagePoints;
-	projectPoints(
-		squarePoints, rvec, tvec, cameraMatrix, distCoeffs, imagePoints
-	);
-
-	// Draw the square on the image.
-	cv::line(image, imagePoints[0], imagePoints[1], cv::Scalar(255, 0, 0), 3);
-	cv::line(image, imagePoints[1], imagePoints[2], cv::Scalar(255, 0, 0), 3);
-	cv::line(image, imagePoints[2], imagePoints[3], cv::Scalar(255, 0, 0), 3);
-	cv::line(image, imagePoints[3], imagePoints[0], cv::Scalar(255, 0, 0), 3);
-}
+int width = 640, height = 800,width2,height2;
 
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mode)
@@ -65,13 +39,11 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 		glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
-int width = 640, height = 800;
-int width2, height2;
-
 void DibujarEsfera(){
 	std::vector<int> ind = mySphere.getIndices();
 	std::vector<glm::vec3> vert = mySphere.getVertices();
 	std::vector<glm::vec2> tex = mySphere.getTexCoords();
+	std::vector<glm::vec3> norm = mySphere.getNormals();
 	int numIndices = mySphere.getNumIndices();
 	std::vector<float> ValoresEsfera;
 
@@ -81,6 +53,9 @@ void DibujarEsfera(){
 		ValoresEsfera.push_back((vert[ind[i]]).z);
 		ValoresEsfera.push_back((tex[ind[i]]).s);
 		ValoresEsfera.push_back((tex[ind[i]]).t);
+		ValoresEsfera.push_back((norm[ind[i]]).x);
+		ValoresEsfera.push_back((norm[ind[i]]).y);
+		ValoresEsfera.push_back((norm[ind[i]]).z);
 	}
 
 	glGenVertexArrays(1, &VAO);
@@ -92,17 +67,20 @@ void DibujarEsfera(){
 	glBufferData(GL_ARRAY_BUFFER, ValoresEsfera.size()*4, &ValoresEsfera[0], GL_STATIC_DRAW);
 
 	// Postion Attribute
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (GLvoid*)0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float), (GLvoid*)0);
 	glEnableVertexAttribArray(0);
 
 	// Texture Attribute
-	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float) , (GLvoid*)(3* sizeof(float)));
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(3* sizeof(float)));
 	glEnableVertexAttribArray(1);
+
+	// Normal Attribute
+	glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(5* sizeof(float)));
+	glEnableVertexAttribArray(2);
 
 	glBindVertexArray(0); // Unbind VAO
 
 }
-
 
 int main()
 {
@@ -140,15 +118,18 @@ int main()
 	glfwGetFramebufferSize(window, &width, &height);
 	glViewport(0, 0, 800, 600);
 
-
+	//Creacion de los Shaders
 	GLuint renderingProgram = Utils::createShaderProgram("src/shaders/vertShader.glsl", "src/shaders/fragShader.glsl");
 	GLuint bgProgram = Utils::createShaderProgram("src/shaders/bgVertShader.glsl", "src/shaders/bgFragShader.glsl");
-/*
+	GLuint LampProgram = Utils::createShaderProgram("src/shaders/lampVertShader.glsl", "src/shaders/lampFragShader.glsl");
+
+	/*
 	// Camera Matrix & Distortion Parameters
 	cv::Mat intrinsic_matrix = cv::Mat::eye(3, 3, CV_64F);
 	cv::Mat distortion_parameters;
 	loadCameraCalibration("CAMARA", intrinsic_matrix, distortion_parameters);*/
 
+	//PARAMETROS DESIGNADOS PARA LA CAMARA
 	double Ofx, Ofy, Ocx, Ocy, Ok1, Ok2, Ok3, Op1, Op2;
 	Ofx = 955.8925;
 	Ofy = 955.4439;
@@ -173,6 +154,8 @@ int main()
 	cv::aruco::DetectorParameters parameters;
 	cv::Ptr<cv::aruco::Dictionary> markerDictionary = cv::aruco::getPredefinedDictionary(cv::aruco::PREDEFINED_DICTIONARY_NAME::DICT_5X5_250);
 	cv::Ptr<cv::aruco::GridBoard> board = cv::aruco::GridBoard::create(5, 5, 0.04, 0.01, markerDictionary);
+
+	//------------------ASIGNACION DE CAMARA SEA UNA IP DE CELULAR O CAMARA INTEGRADA/EXTERNA DE LA COMPUTADORA---------------
 	//camara por droidcam
 	//cv::VideoCapture vid("http://192.168.1.5:4747/video");
 	//camara de laptop o pc
@@ -182,11 +165,12 @@ int main()
 	}
 
 	cv::Mat rotationVectors, translationVectors;
-
+	//FUNCION QUE ASIGNA LOS VALORES DE POSICION,TEXTURA Y NORMAL DE UNA ESFERA
 	DibujarEsfera();
 
-	GLuint texture1, texture2;
-	GLuint texture3; //para la luna
+	// ASIGNACION DE IMAGENES A TEXTURA
+	GLuint texture1, texture2;GLuint texture3; // para el sol, la tierra y la luna
+
 	///////////////////////////////////////////////////////////////////////////////// TEXTURA DEL SOL
 	glGenTextures(1, &texture1);
 	glBindTexture(GL_TEXTURE_2D, texture1);
@@ -205,7 +189,7 @@ int main()
 	SOIL_free_image_data(image1);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-	/////////////////////////////////////////////////////////////////////////////////
+	/////////////////////////////////////////////////////////////////////////////////TEXTURA DE LA TIERRA
 
 	glGenTextures(1, &texture2);
 	glBindTexture(GL_TEXTURE_2D, texture2);
@@ -221,7 +205,8 @@ int main()
 	glGenerateMipmap(GL_TEXTURE_2D);
 	SOIL_free_image_data(image2);
 	glBindTexture(GL_TEXTURE_2D, 0);
-	////////////////////////////////////////////////////TEXTURA LUNA
+
+	///////////////////////////////////////////////////////////////////////////////////TEXTURA LUNA
 
 	glGenTextures(1, &texture3);
 	glBindTexture(GL_TEXTURE_2D, texture3);
@@ -238,8 +223,6 @@ int main()
 	SOIL_free_image_data(image3);
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-
-
 	// =======================================================================
 	// scaling matrix for the 3d object
 	glm::mat4 model = glm::mat4(1.0f);
@@ -248,10 +231,17 @@ int main()
 	// default values of modelview so that initially when there is no marker, the object is placed behind the camera and it does not show up
 	glm::mat4 modelview = glm::mat4(1.0f);
 	modelview = glm::scale(model, glm::vec3(0.2f, 0.2f, 0.1f));
-
 	modelview = glm::translate(model, glm::vec3(0.0f, 0.0f, 10.0f));
 
-	// defining the projection matrix
+	// Ambient light
+	glm::vec3 light_color;
+	glm::vec3 ambient_light;
+	float ambient_strength;
+	ambient_strength = 0.2f;
+	light_color = glm::vec3(255.0f / 255.0f, 219.0f / 255.0f, 58.0f / 255.9f);
+	ambient_light = ambient_strength * light_color;
+
+	// defining the projection matrix,
 	float near = 0.2f;
 	float far = 400.0f;
 	float fx = 955.8925;
@@ -334,24 +324,25 @@ int main()
 
 	// =========================================================================================================
 
+
 	while (!glfwWindowShouldClose(window))
 	{
 		glfwPollEvents();
 
 		glClearColor(0.27f, 0.27f, 0.27f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		glm::mat4 modelview = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 10, 0, 0, 0, 1 };
 
 		vid >> frame;
 		cv::aruco::detectMarkers(frame, markerDictionary, markerCorners, markerIds);
 
 		if (markerIds.size() > 0) {
-			//Draw Markers
-			cv::aruco::drawDetectedMarkers(frame, markerCorners, markerIds);
+			//Dibujar Markers
+			//cv::aruco::drawDetectedMarkers(frame, markerCorners, markerIds);
 			int valid = estimatePoseBoard(markerCorners, markerIds, board, intrinsic_matrix, distortion_parameters, rotationVectors, translationVectors);
 			if (valid > 0) {
 				cv::Rodrigues(rotationVectors, rot_mat);
-
 				modelview = { rot_mat.at<double>(0,0),  rot_mat.at<double>(0,1),  rot_mat.at<double>(0,2),  translationVectors.at<double>(0),
 							 -rot_mat.at<double>(1,0), -rot_mat.at<double>(1,1), -rot_mat.at<double>(1,2), -translationVectors.at<double>(1),
 							 -rot_mat.at<double>(2,0), -rot_mat.at<double>(2,1), -rot_mat.at<double>(2,2), -translationVectors.at<double>(2),
@@ -360,66 +351,109 @@ int main()
 				cv::aruco::drawAxis(frame, intrinsic_matrix, distortion_parameters, rotationVectors, translationVectors, 0.05f);
 			}
 		}
-
+		//USAMOS LOS SHADERS DEL RENDERING PROGRAM
 		glUseProgram(renderingProgram);
 		mvLoc = glGetUniformLocation(renderingProgram, "modelview");
 		projLoc = glGetUniformLocation(renderingProgram, "projection_perspective");
+		modelLoc = glGetUniformLocation(renderingProgram, "model");
 
 		modelview = glm::scale(modelview, glm::vec3(0.07f, 0.07f, 0.07f));
 		modelview = glm::translate(modelview, glm::vec3(1.4f, 1.4f, 1.0f));
 		glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection_perspective));
 
+		//===================================================================================================================
 		//MODELO EJEMPLO DEL SOL
+
+		//POSICION DE LA LAMPARA
+		glm::vec3 lamp_pos(1.0f, 1.0f, 0.0f);
+
+		//TRANSFORMACIONES DEL SOL
 		mvPila.push(modelview);
+		mvPila.push(mvPila.top());
+		mvPila.top() *= glm::scale(glm::mat4(1.0f),glm::vec3(1.5f, 1.5f, 1.5f));  // Escalamiento
 		mvPila.push(mvPila.top());
 		mvPila.top() *= glm::translate(glm::mat4(1.0f),glm::vec3(0.0f, 0.0f, 0.0f));  // Posicion del Sol
 		mvPila.push(mvPila.top());  // duplicating
 		mvPila.top() *= glm::rotate(glm::mat4(1.0f), (float) glfwGetTime(),glm::vec3(1.0f, 0.0f, 0.0f));  // Rotacion del Sol
 
-
-
+		//ASIGNACION DE TEXTURA PARA EL SOL
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, texture1);
+
+		//PARAMETROS ASIGNADOS A LOS SHADERS DEL SOL
 		glUniform1i(glGetUniformLocation(renderingProgram, "Textura"), 0);
 		glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvPila.top()));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "ambient_light"),1,glm::value_ptr(ambient_light));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "lamp_pos"),1,glm::value_ptr(lamp_pos));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "light_color"),1,glm::value_ptr(glm::vec3(1.0f, 1.0f, 1.0f)));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "sphere_color"),1,glm::value_ptr(glm::vec3(0.4f, 0.4f, 0.4f)));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "camera_pos"),1,glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));
+
+		//ENLAZAMOS EL BUFFER CON EL VBO ESFERA
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		// Postion Attribute
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (GLvoid*)0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float), (GLvoid*)0);
 		glEnableVertexAttribArray(0);
 		// Texture Attribute
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float) , (GLvoid*)(3* sizeof(float)));
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(3* sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// Normal Attribute
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(5* sizeof(float)));
+		glEnableVertexAttribArray(2);
 		glEnable(GL_DEPTH_TEST);
 		glDepthFunc(GL_LEQUAL);
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
-		mvPila.pop();
+		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());//DIBUJAR LA ESFERA
+		mvPila.pop();//SACAMOS LA PILA
 
-	// MODELO DE LA TIERRA///////////////////////////////////////////////////////////////////
+		//===================================================================================================================
+		//MODELO DE LA TIERRA
 
+		// Light position
+		glm::vec3 lamp_pos2(sin(glfwGetTime() / 2.0f), cos(glfwGetTime() / 2.0f), 0.0f);
+
+		//TRANSFORMACIONES DE LA TIERRA
 		mvPila.push(mvPila.top());  // mvMat of EARTH
+		mvPila.top() *= glm::scale(glm::mat4(1.0f),glm::vec3(0.5f, 0.5f, 0.5f));  // Escalamiento
+		mvPila.push(mvPila.top());
 		mvPila.top() *= glm::translate(glm::mat4(1.0f),glm::vec3(sin((float) glfwGetTime()) * 4.0, 0.0f,cos((float) glfwGetTime()) * 4.0));  // planet position
 		mvPila.push(mvPila.top());  // duplicating
 		mvPila.top() *= glm::rotate(glm::mat4(1.0f), (float) glfwGetTime(),glm::vec3(0.0, 1.0, 0.0));  // planet rotation
 
+		//ASIGNACION DE TEXTURA PARA LA TIERRA
 		glActiveTexture(GL_TEXTURE1);
 		glBindTexture(GL_TEXTURE_2D, texture2);
+
+		//PARAMETROS ASIGNADOS A LOS SHADERS DE LA TIERRA
 		glUniform1i(glGetUniformLocation(renderingProgram, "Textura"), 1);
 		glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvPila.top()));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "ambient_light"),1,glm::value_ptr(ambient_light));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "lamp_pos"),1,glm::value_ptr(lamp_pos2));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "light_color"),1,glm::value_ptr(glm::vec3(1.0f, 1.0f, 1.0f)));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "sphere_color"),1,glm::value_ptr(glm::vec3(0.4f, 0.4f, 0.4f)));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "camera_pos"),1,glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));
+
+		//ENLAZAMOS EL BUFFER CON EL VBO ESFERA
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
 		// Postion Attribute
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (GLvoid*)0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float), (GLvoid*)0);
 		glEnableVertexAttribArray(0);
 		// Texture Attribute
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float) , (GLvoid*)(3* sizeof(float)));
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(3* sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// Normal Attribute
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(5* sizeof(float)));
+		glEnableVertexAttribArray(2);
 		glBindVertexArray(VAO);
-		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
-		mvPila.pop();
+		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());//Dibujar la esfera
+		mvPila.pop();//SACAMOS LA PILA
 
+		//===================================================================================================================
+		//MODELO DE LA LUNA
 
-
-		//MODELO EJEMPLO LUNA//////////////////////////////////////////////////////////////
+		//TRANSFORMACIONES DE LA LUNA
 		mvPila.push(mvPila.top());  // mvMat de luna
 		mvPila.top() *= glm::translate(glm::mat4(1.0f),
 		glm::vec3(0.0f, sin((float) glfwGetTime()) * 2.0, cos((float) glfwGetTime()) * 2.0));  // POSICION DE LA LUNA
@@ -427,24 +461,34 @@ int main()
 		mvPila.top() *= glm::rotate(glm::mat4(1.0f), (float) glfwGetTime(),glm::vec3(0.0, 0.0, 1.0));  // ROTACION DE LA LUNA
 		mvPila.top() *= glm::scale(glm::mat4(1.0f), glm::vec3(0.25f, 0.25f, 0.25f));  //HACE LA LUNA MAS PEQUENA
 
-
+		//ASIGNACION DE TEXTURA PARA LA LUNA
 		glActiveTexture(GL_TEXTURE2);
 		glBindTexture(GL_TEXTURE_2D, texture3); //aplica la textura almacenada donde estaba la luna
-		glUniform1i(glGetUniformLocation(renderingProgram, "Textura"), 2);
 
+		//PARAMETROS ASIGNADOS A LOS SHADERS DE LA LUNA
+		glUniform1i(glGetUniformLocation(renderingProgram, "Textura"), 2);
 		glUniformMatrix4fv(mvLoc, 1, GL_FALSE, glm::value_ptr(mvPila.top()));
+		glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "ambient_light"),1,glm::value_ptr(ambient_light));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "lamp_pos"),1,glm::value_ptr(lamp_pos2));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "light_color"),1,glm::value_ptr(glm::vec3(1.0f, 1.0f, 1.0f)));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "sphere_color"),1,glm::value_ptr(glm::vec3(0.4f, 0.4f, 0.4f)));
+		glUniform3fv(glGetUniformLocation(renderingProgram, "camera_pos"),1,glm::value_ptr(glm::vec3(0.0f, 0.0f, 0.0f)));
 		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+
+		//ENLAZAMOS EL BUFFER CON EL VBO ESFERA
 		//ATRIBUTOS DE POSICION
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5* sizeof(float), (GLvoid*)0); /////////////// LOS 2 ULTIMOS PARAMETROS
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float), (GLvoid*)0); /////////////// LOS 2 ULTIMOS PARAMETROS
 		glEnableVertexAttribArray(0); ////////////// QUE NUM VA
 		//ATRIBUTOS DE TEXTURA
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5* sizeof(float) , (GLvoid*)(3* sizeof(float)));
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(3* sizeof(float)));
 		glEnableVertexAttribArray(1);
+		// Normal Attribute
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8* sizeof(float) , (GLvoid*)(5* sizeof(float)));
+		glEnableVertexAttribArray(2);
 		glBindVertexArray(VAO);
-		//    glEnable(GL_DEPTH_TEST);
-		//    glDepthFunc(GL_LEQUAL);
-		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
-
+		glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());//Dibujar la esfera
+		mvPila.pop();//SACAMOS LA PILA
 
 
 		//Se elimina mvPila segun las veces que se ha creado objetos
@@ -452,7 +496,8 @@ int main()
 		mvPila.pop();
 		mvPila.pop();
 
-		// draw bg ---------------------------------------------------------------------------------------------
+		//===================================================================================================================
+		// Draw BG , se usan los SHADERS de bgProgram
 		glUseProgram(bgProgram);
 		glBindVertexArray(VAO_bg);
 
@@ -465,10 +510,21 @@ int main()
 		glUniformMatrix4fv(glGetUniformLocation(bgProgram, "perspective_projection_bg"), 1, GL_FALSE, glm::value_ptr(projection_perspective));
 
 		glDrawArrays(GL_TRIANGLES, 0, 36);
-		//glDrawArrays(GL_TRIANGLES, 0, mySphere.getNumIndices());
 		glBindVertexArray(0);
-		// -----------------------------------------------------------------------------------------------------
 
+		//===================================================================================================================
+		// Draw lamp , se usan los SHADERS de LampProgram
+		glm::mat4 model_lamp = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, lamp_pos.x, lamp_pos.y, 0.0f, 1.0f };
+		model_lamp = glm::scale(model_lamp, glm::vec3(0.1f, 0.1f, 0.1f));
+		glm::mat4 modelview_lamp = glm::mat4(1.0f);
+
+		glUseProgram(LampProgram);
+		glUniformMatrix4fv(glGetUniformLocation(LampProgram, "model_lamp"), 1, GL_FALSE, glm::value_ptr(model_lamp));
+		glUniformMatrix4fv(glGetUniformLocation(LampProgram, "modelview_lamp"), 1, GL_FALSE, glm::value_ptr(modelview_lamp));
+		glUniformMatrix4fv(glGetUniformLocation(LampProgram, "projection_lamp"), 1, GL_FALSE, glm::value_ptr(projection_perspective));
+		glDrawArrays(GL_TRIANGLES, 0,mySphere.getNumIndices());
+
+		// ---------------------------------------------------------------------------------------------------------------
 		glfwSwapBuffers(window);
 	}
 
